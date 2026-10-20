@@ -252,6 +252,46 @@ describe('precompiler', function () {
       expect(opts.templates[0].source).toBe('a');
     });
 
+    it.skipIf(path.sep !== '\\')(
+      'should strip native Windows roots from explicit and enumerated paths',
+      async function () {
+        const directory = path.join(__dirname, 'artifacts');
+        for (const root of [directory, directory + path.sep]) {
+          const direct = await loadTemplatesAsync({
+            files: [path.join(directory, 'empty.handlebars')],
+            root,
+          });
+          expect(direct.templates[0].name).toBe('empty');
+          const enumerated = await loadTemplatesAsync({
+            files: [directory],
+            root,
+          });
+          expect(
+            enumerated.templates.map((template) => template.name)
+          ).toContain('empty');
+        }
+      }
+    );
+
+    it.skipIf(path.sep !== '\\')(
+      'should normalize native Windows names but preserve root boundaries',
+      async function () {
+        const filename = path.join(__dirname, 'artifacts', 'empty.handlebars');
+        for (const root of [__dirname, __dirname + path.sep, __dirname + '/']) {
+          const opts = await loadTemplatesAsync({ files: [filename], root });
+          expect(opts.templates[0].name).toBe('artifacts/empty');
+          expect(opts.templates[0].path).toBe(filename);
+        }
+        const opts = await loadTemplatesAsync({
+          files: [filename],
+          root: path.join(__dirname, 'art'),
+        });
+        expect(opts.templates[0].name).toBe(
+          filename.replace(/\.handlebars$/, '')
+        );
+      }
+    );
+
     it('should preserve template names with a trailing root separator', async function () {
       for (const root of [
         __dirname + '/artifacts',
